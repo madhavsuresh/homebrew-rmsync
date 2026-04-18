@@ -18,17 +18,16 @@ concurrency:
 jobs:
   audit:
     name: Formula audit
-    runs-on: macos-14
+    # macos-15 ships Xcode 16 / Swift 6.0; matches the formula's
+    # depends_on xcode: ["16.0", :build].
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
         with:
           # brew expects tap repos to live at a specific path under
-          # Homebrew/Library/Taps. We tap via path: below, so checkout
+          # Homebrew/Library/Taps. We tap via symlink below; checkout
           # location here is just a working copy.
           path: tap
-
-      - name: Select Xcode 16
-        run: sudo xcode-select -s /Applications/Xcode_16.0.app || true
 
       - name: Tap this repo locally
         # Point brew at the checkout under its canonical Library/Taps
