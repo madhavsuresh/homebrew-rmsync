@@ -29,14 +29,15 @@ jobs:
           # location here is just a working copy.
           path: tap
 
-      - name: Tap this repo locally
-        # Point brew at the checkout under its canonical Library/Taps
-        # path via tap-new + symlink. Running `brew tap <name> <path>`
-        # has been deprecated in favor of this shape.
+      - name: Install formula into brew tap
+        # brew audit resolves symlinks and rejects formulae whose real
+        # path isn't inside a tap, so copy instead of symlinking.
+        # `brew tap-new` sets up the required tap-repo structure at
+        # /opt/homebrew/Library/Taps/madhavsuresh/homebrew-rmsync.
         run: |
           brew tap-new madhavsuresh/rmsync
-          ln -sf "$PWD/tap/Formula/rmsync.rb" \
-                 "$(brew --repo madhavsuresh/rmsync)/Formula/rmsync.rb"
+          cp tap/Formula/rmsync.rb \
+             "$(brew --repo madhavsuresh/rmsync)/Formula/rmsync.rb"
 
       - name: brew audit
         # --strict enables style rules; --online hits the URL to
