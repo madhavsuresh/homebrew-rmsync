@@ -1,0 +1,65 @@
+name: CI
+
+# Runs on every PR + push to main. Validates the formula:
+#   1. brew audit (syntax, style, metadata)
+#   2. brew install --build-from-source (actually builds)
+#   3. brew test (runs the formula's test do block)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: Formula audit
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # brew expects tap repos to live at a specific path under
+          # Homebrew/Library/Taps. We tap via path: below, so checkout
+          # location here is just a working copy.
+          path: tap
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.0.app || true
+
+      - name: Tap this repo locally
+        # Point brew at the checkout under its canonical Library/Taps
+        # path via tap-new + symlink. Running `brew tap <name> <path>`
+        # has been deprecated in favor of this shape.
+        run: |
+          brew tap-new madhavsuresh/rmsync
+          ln -sf "$PWD/tap/Formula/rmsync.rb" \
+                 "$(brew --repo madhavsuresh/rmsync)/Formula/rmsync.rb"
+
+      - name: brew audit
+        # --strict enables style rules; --online hits the URL to
+        # verify it's reachable and the sha256 matches. Failing loudly
+        # here is the point.
+        run: brew audit --strict --online madhavsuresh/rmsync/rmsync
+
+      - name: brew style
+        # Lint Ruby style. Separate from audit so failures are easier
+        # to triage.
+        run: brew style madhavsuresh/rmsync/rmsync
+
+      - name: brew install (build from source)
+        # This is the expensive step — full universal release build of
+        # rmsync + its SPM deps. Expect 50–90s on macos-14.
+        run: brew install --build-from-source madhavsuresh/rmsync/rmsync
+
+      - name: brew test
+        # Runs the test do block in Formula/rmsync.rb.
+        run: brew test madhavsuresh/rmsync/rmsync
+
+      - name: brew linkage
+        # Verifies the installed Mach-O binaries have no undeclared
+        # dynamic-library dependencies. Cheap.
+        run: brew linkage --test madhavsuresh/rmsync/rmsync
