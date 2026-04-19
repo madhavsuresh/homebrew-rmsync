@@ -50,9 +50,14 @@ jobs:
         # to triage.
         run: brew style madhavsuresh/rmsync/rmsync
 
+      - name: Tap io41/tap (rmapi source)
+        # The formula declares rmapi as a runtime dep from this tap.
+        # Fresh runners don't have it pre-tapped.
+        run: brew tap io41/tap
+
       - name: brew install (build from source)
         # This is the expensive step — full universal release build of
-        # rmsync + its SPM deps. Expect 50–90s on macos-14.
+        # rmsync + its SPM deps. Expect 50–90s on macos-15.
         run: brew install --build-from-source madhavsuresh/rmsync/rmsync
 
       - name: brew test
