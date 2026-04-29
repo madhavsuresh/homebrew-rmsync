@@ -18,8 +18,8 @@
 class Rmsync < Formula
   desc "Bidirectional macOS ↔ reMarkable tablet Markdown sync daemon"
   homepage "https://github.com/madhavsuresh/rmsync"
-  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.17.tar.gz"
-  sha256 "e0d1ad99a7f5177e2674cce82e8ac336567bf9713fc5f6c0a70161df936800a0"
+  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.18.tar.gz"
+  sha256 "7937d074b81b876258640ac281a1deedafb6045c45eecbd6de0881eadae054f4"
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
@@ -222,6 +222,21 @@ class Rmsync < Formula
 
       [log]
       level = "INFO"   # DEBUG | INFO | WARNING | ERROR
+
+      # Optional: drop-folder for sending PDFs / EPUBs to the tablet.
+      # Drop a file into ``local_dir``, the daemon pushes it to
+      # ``remote_folder`` on the cloud, then (by default) removes it
+      # from local. Uncomment to enable.
+      # [inbox]
+      # local_dir         = "$HOME/rmsync-writing/_inbox"
+      # remote_folder     = "Inbox"
+      # delete_after_push = true
+
+      # Optional: web dashboard at http://127.0.0.1:7878.
+      # [web]
+      # enabled    = true
+      # bind_addr  = "127.0.0.1"
+      # port       = 7878
       TOML
         echo "  Edit it if you want sync_dir somewhere other than ~/rmsync-writing"
         echo "  (or run 'rmsync relocate <new-path>' after the daemon comes up)."
