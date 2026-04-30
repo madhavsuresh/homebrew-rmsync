@@ -18,8 +18,8 @@
 class Rmsync < Formula
   desc "Bidirectional macOS ↔ reMarkable tablet Markdown sync daemon"
   homepage "https://github.com/madhavsuresh/rmsync"
-  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.18.tar.gz"
-  sha256 "7937d074b81b876258640ac281a1deedafb6045c45eecbd6de0881eadae054f4"
+  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.19.tar.gz"
+  sha256 "5125724953e46a6b3b11d82f16a7110e6aa5f143345334ebdb5e1dc82634cf78"
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
@@ -237,6 +237,17 @@ class Rmsync < Formula
       # enabled    = true
       # bind_addr  = "127.0.0.1"
       # port       = 7878
+
+      # Optional: rename / move / delete propagation. OFF by default.
+      # When enabled, deletes and renames propagate both ways. Local
+      # files soft-delete into <sync_dir>/.rmsync-trash first;
+      # 'rmsync trash list / restore' recovers them. The bulk-delete
+      # brake caps the blast radius of an accidental 'rm -rf'.
+      # [deletion]
+      # enable_propagation         = false
+      # trash_retention_days       = 30
+      # bulk_delete_threshold      = 0.5
+      # bulk_delete_window_seconds = 30
       TOML
         echo "  Edit it if you want sync_dir somewhere other than ~/rmsync-writing"
         echo "  (or run 'rmsync relocate <new-path>' after the daemon comes up)."
