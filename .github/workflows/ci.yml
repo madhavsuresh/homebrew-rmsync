@@ -29,17 +29,26 @@ jobs:
           # location here is just a working copy.
           path: tap
 
-      - name: Install formula into brew tap
+      - name: Install both formulae into brew tap
         # brew audit resolves symlinks and rejects formulae whose real
         # path isn't inside a tap, so copy instead of symlinking.
         # `brew tap-new` sets up the required tap-repo structure at
         # /opt/homebrew/Library/Taps/madhavsuresh/homebrew-rmsync.
+        # Both rmsync.rb and rmapi.rb get copied so the audit + install
+        # below cover the full tap surface.
         run: |
           brew tap-new madhavsuresh/rmsync
           cp tap/Formula/rmsync.rb \
              "$(brew --repo madhavsuresh/rmsync)/Formula/rmsync.rb"
+          cp tap/Formula/rmapi.rb \
+             "$(brew --repo madhavsuresh/rmsync)/Formula/rmapi.rb"
 
-      - name: brew audit
+      - name: brew audit (rmapi)
+        # Audit the rmapi formula on its own. --online verifies all
+        # four prebuilt archives' URLs + sha256s.
+        run: brew audit --strict --online madhavsuresh/rmsync/rmapi
+
+      - name: brew audit (rmsync)
         # --strict enables style rules; --online hits the URL to
         # verify it's reachable and the sha256 matches. Failing loudly
         # here is the point.
@@ -48,21 +57,23 @@ jobs:
       - name: brew style
         # Lint Ruby style. Separate from audit so failures are easier
         # to triage.
-        run: brew style madhavsuresh/rmsync/rmsync
+        run: brew style madhavsuresh/rmsync/rmsync madhavsuresh/rmsync/rmapi
 
-      - name: Tap io41/tap (rmapi source)
-        # The formula declares rmapi as a runtime dep from this tap.
-        # Fresh runners don't have it pre-tapped.
-        run: brew tap io41/tap
+      - name: brew install rmapi
+        # Install rmapi first because rmsync depends on it. Bottle is
+        # a prebuilt-binary extraction; finishes in seconds.
+        run: brew install --build-from-source madhavsuresh/rmsync/rmapi
 
-      - name: brew install (build from source)
+      - name: brew install rmsync (build from source)
         # This is the expensive step — full universal release build of
         # rmsync + its SPM deps. Expect 50–90s on macos-15.
         run: brew install --build-from-source madhavsuresh/rmsync/rmsync
 
       - name: brew test
-        # Runs the test do block in Formula/rmsync.rb.
-        run: brew test madhavsuresh/rmsync/rmsync
+        # Runs the test do blocks in both formulas.
+        run: |
+          brew test madhavsuresh/rmsync/rmapi
+          brew test madhavsuresh/rmsync/rmsync
 
       - name: brew linkage
         # Verifies the installed Mach-O binaries have no undeclared

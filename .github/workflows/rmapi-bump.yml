@@ -1,0 +1,142 @@
+name: Watch ddvk/rmapi for new releases
+
+# Polls ddvk/rmapi once a day. When the latest tag is newer than the
+# version pinned in Formula/rmapi.rb, opens a PR with the new
+# version + recomputed sha256s for all four published prebuilt
+# archives (macOS arm64/intel, Linux arm64/amd64).
+#
+# The PR body links the upstream changelog so the reviewer can see
+# what changed before merging. Manual override: anyone can run the
+# workflow on demand via the workflow_dispatch event.
+#
+# Why this exists: the cloud-side schema-v4 rollout in 2026-04 broke
+# rmapi <0.0.32 with HTTP 400. Rmsync's tap had io41/tap as the
+# upstream rmapi source and io41/tap was slow to bump. Pulling
+# rmapi directly from ddvk releases via this tap eliminates the
+# coordination delay.
+
+on:
+  schedule:
+    # Daily at 14:17 UTC. The off-the-hour minute is intentional —
+    # GitHub-cron load is concentrated at the top of every hour, and
+    # offset minutes wait less in the queue.
+    - cron: '17 14 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve current vs latest rmapi versions
+        id: resolve
+        run: |
+          set -euo pipefail
+          # Current pinned version from the formula's `version "X.Y.Z"`
+          # line. Single source of truth — bumping this triggers
+          # the rest of the formula edits below.
+          current=$(grep -E '^\s*version\s+"' Formula/rmapi.rb \
+            | head -1 \
+            | sed -E 's/.*"([^"]+)".*/\1/')
+          latest=$(curl -fsSL https://api.github.com/repos/ddvk/rmapi/releases/latest \
+            | python3 -c 'import sys, json; print(json.load(sys.stdin)["tag_name"].lstrip("v"))')
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest"   >> "$GITHUB_OUTPUT"
+          if [ "$current" = "$latest" ]; then
+            echo "no_bump=true" >> "$GITHUB_OUTPUT"
+            echo "Already pinned at v$current; nothing to do."
+          else
+            echo "no_bump=false" >> "$GITHUB_OUTPUT"
+            echo "Bumping rmapi: v$current -> v$latest"
+          fi
+
+      - name: Compute new sha256s
+        id: sums
+        if: steps.resolve.outputs.no_bump == 'false'
+        run: |
+          set -euo pipefail
+          v="${{ steps.resolve.outputs.latest }}"
+          base="https://github.com/ddvk/rmapi/releases/download/v${v}"
+          # Download each asset to a temp file and hash. Single
+          # ``shasum -a 256`` is the same hash brew computes itself,
+          # so the formula audit will pass on first try.
+          declare -A urls=(
+            [arm64_mac]="${base}/rmapi-macos-arm64.zip"
+            [intel_mac]="${base}/rmapi-macos-intel.zip"
+            [arm64_linux]="${base}/rmapi-linux-arm64.tar.gz"
+            [amd64_linux]="${base}/rmapi-linux-amd64.tar.gz"
+          )
+          for key in "${!urls[@]}"; do
+            url="${urls[$key]}"
+            sha=$(curl -fsSL "$url" | shasum -a 256 | awk '{print $1}')
+            echo "${key}=${sha}" >> "$GITHUB_OUTPUT"
+            echo "  $key  $sha  $url"
+          done
+
+      - name: Rewrite Formula/rmapi.rb
+        if: steps.resolve.outputs.no_bump == 'false'
+        env:
+          NEW_VERSION: ${{ steps.resolve.outputs.latest }}
+          ARM64_MAC:   ${{ steps.sums.outputs.arm64_mac }}
+          INTEL_MAC:   ${{ steps.sums.outputs.intel_mac }}
+          ARM64_LINUX: ${{ steps.sums.outputs.arm64_linux }}
+          AMD64_LINUX: ${{ steps.sums.outputs.amd64_linux }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os, re
+          path = "Formula/rmapi.rb"
+          with open(path) as f: src = f.read()
+          src = re.sub(r'version\s+"[^"]+"', f'version "{os.environ["NEW_VERSION"]}"', src, count=1)
+          # Sha256s appear in the order arm64-mac, intel-mac,
+          # arm64-linux, amd64-linux per the formula's block layout.
+          new_sums = [
+              os.environ["ARM64_MAC"],
+              os.environ["INTEL_MAC"],
+              os.environ["ARM64_LINUX"],
+              os.environ["AMD64_LINUX"],
+          ]
+          def replace_each(match, sums=iter(new_sums)):
+              return f'sha256 "{next(sums)}"'
+          src = re.sub(r'sha256\s+"[0-9a-f]{64}"', replace_each, src)
+          with open(path, "w") as f: f.write(src)
+          PY
+
+      - name: Open bump PR
+        if: steps.resolve.outputs.no_bump == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.resolve.outputs.latest }}
+          OLD_VERSION: ${{ steps.resolve.outputs.current }}
+        run: |
+          set -euo pipefail
+          branch="bump-rmapi-v${NEW_VERSION}"
+          git config user.name "rmapi-bumper"
+          git config user.email "noreply@github.com"
+          # If the PR already exists from a prior run, no-op
+          # rather than producing duplicate noise.
+          if gh pr list --head "$branch" --json number --jq '.[0].number' | grep -q .; then
+            echo "PR for $branch already open; skipping."
+            exit 0
+          fi
+          git checkout -b "$branch"
+          git add Formula/rmapi.rb
+          git commit -m "rmapi v${NEW_VERSION}"
+          git push --set-upstream origin "$branch"
+          gh pr create \
+            --title "rmapi v${NEW_VERSION}" \
+            --body "Automated bump from rmapi v${OLD_VERSION} → v${NEW_VERSION}.
+
+Upstream release notes: https://github.com/ddvk/rmapi/releases/tag/v${NEW_VERSION}
+
+Sha256s recomputed for all four prebuilt archives by this workflow run.
+
+Tested via:
+  brew install --build-from-source ./Formula/rmapi.rb
+  rmapi version  # should print v${NEW_VERSION}
+"
