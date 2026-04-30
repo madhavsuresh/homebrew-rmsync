@@ -18,9 +18,8 @@
 class Rmsync < Formula
   desc "Bidirectional macOS ↔ reMarkable tablet Markdown sync daemon"
   homepage "https://github.com/madhavsuresh/rmsync"
-  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.23.tar.gz"
-  sha256 "29bc9344c36f66a346023466e7d48cc62cf41dc796129945ffcb8cefd87ed111"
-
+  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.24.tar.gz"
+  sha256 "a4f6cba8f9e5d9bda29e062dea7ac6b3248c68e95d7bd57927b29cad3b542464"
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
@@ -31,9 +30,16 @@ class Rmsync < Formula
   # can't enforce that distinction.
   depends_on xcode: ["16.0", :build]
 
-  # rmapi is required at runtime; we shell out to it for all cloud access.
-  # io41/tap maintains a recent formula for the Go binary.
-  depends_on "io41/tap/rmapi"
+  # rmapi is required at runtime; we shell out to it for all cloud
+  # access. We pin a specific version via this same tap (rather than
+  # io41/tap/rmapi, which sat at 0.0.29 through the 2026-04 cloud
+  # schema-v4 break that 400'd every put — see ddvk/rmapi#58 +
+  # rmsync v0.2.23 release notes). Pulling from a tap we control
+  # eliminates the upstream-coordination delay when the cloud-side
+  # API moves; the auto-bump workflow in the tap repo
+  # (`.github/workflows/rmapi-bump.yml`) opens a PR within 24h of a
+  # new ddvk/rmapi release.
+  depends_on "madhavsuresh/rmsync/rmapi"
 
   depends_on macos: :ventura
 
