@@ -55,9 +55,19 @@ class Rmapi < Formula
   end
 
   # Conflicts with the upstream io41/tap formula. Both ship the same
-  # `rmapi` binary; brew refuses to install both. Existing users on
-  # io41/tap need to ``brew uninstall io41/tap/rmapi`` first.
-  conflicts_with "io41/tap/rmapi", because: "both install the same `rmapi` binary"
+  # `rmapi` binary at the same path; brew refuses to install both.
+  #
+  # The conflict reason text below is the message users actually see
+  # during ``brew upgrade rmsync`` when they have io41/tap/rmapi
+  # installed from before rmsync v0.2.24 (which moved to this tap).
+  # Make it actionable: point at the exact uninstall + untap commands
+  # so the upgrade isn't a dead end. Without this, the failure mode
+  # was a cryptic "Cannot install rmapi because conflicting formulae
+  # are installed" message that left users guessing.
+  conflicts_with "io41/tap/rmapi",
+    because: "both install the same `rmapi` binary. To migrate: " \
+             "`brew uninstall --ignore-dependencies io41/tap/rmapi && " \
+             "brew untap io41/tap && brew upgrade rmsync`"
 
   def install
     # The zip extracts a single file named ``rmapi``. tar.gz on Linux
