@@ -128,19 +128,14 @@ jobs:
           git add Formula/rmapi.rb
           git commit -m "rmapi v${NEW_VERSION}"
           git push --set-upstream origin "$branch"
+          # Body is a single-line string. YAML's ``run: |`` literal
+          # block ends on any column-1 content; the previous
+          # multi-line body broke the workflow at parse time
+          # (release.yml hit the same trap; see commit history).
+          BODY="Automated bump from rmapi v${OLD_VERSION} -> v${NEW_VERSION}. Upstream notes: https://github.com/ddvk/rmapi/releases/tag/v${NEW_VERSION} . Sha256s recomputed for all four prebuilt archives by this workflow. Auto-merges once Formula audit (CI) passes."
           PR_URL=$(gh pr create \
             --title "rmapi v${NEW_VERSION}" \
-            --body "Automated bump from rmapi v${OLD_VERSION} → v${NEW_VERSION}.
-
-Upstream release notes: https://github.com/ddvk/rmapi/releases/tag/v${NEW_VERSION}
-
-Sha256s recomputed for all four prebuilt archives by this workflow run.
-
-Tested via:
-  brew install --build-from-source ./Formula/rmapi.rb
-  rmapi version  # should print v${NEW_VERSION}
-
-Auto-merges once Formula audit (CI) passes." \
+            --body "$BODY" \
             | tail -1)
           echo "Opened PR: $PR_URL"
           # Queue auto-merge. ``--auto`` waits for the tap CI's
