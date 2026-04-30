@@ -20,6 +20,7 @@ class Rmsync < Formula
   homepage "https://github.com/madhavsuresh/rmsync"
   url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.23.tar.gz"
   sha256 "29bc9344c36f66a346023466e7d48cc62cf41dc796129945ffcb8cefd87ed111"
+
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
