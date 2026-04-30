@@ -29,28 +29,28 @@
 class Rmapi < Formula
   desc "Go CLI for the reMarkable cloud (used by rmsync)"
   homepage "https://github.com/ddvk/rmapi"
-  version "0.0.32"
+  version "0.0.33"
   license "MIT"
 
   on_macos do
     on_arm do
       url "https://github.com/ddvk/rmapi/releases/download/v#{version}/rmapi-macos-arm64.zip"
-      sha256 "839dc2f1c78ee9457f61b920a99b4aad1d2e97f24f6aad52a2eab9f501eb7682"
+      sha256 "ddde79c4247477a4490f76a000509ab50412e43fd46acb6f4d84a16766f49e66"
     end
     on_intel do
       url "https://github.com/ddvk/rmapi/releases/download/v#{version}/rmapi-macos-intel.zip"
-      sha256 "60f2506903303cc25a4af1716b314c6ba56c10789082abcf6a5c8a11cfd586f2"
+      sha256 "69a6bf76f4845102d1af5089b2c58b94f6e1bafb141ac4d6bee57815769f24a1"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/ddvk/rmapi/releases/download/v#{version}/rmapi-linux-arm64.tar.gz"
-      sha256 "6e5ced303da31989786c5bf6abd933202c046576722a3fe0d89e2fa50e0ea102"
+      sha256 "0267f55c8b3fb001a84cbe42059d8e9b3321cefee578f88d9deec763f1dde441"
     end
     on_intel do
       url "https://github.com/ddvk/rmapi/releases/download/v#{version}/rmapi-linux-amd64.tar.gz"
-      sha256 "088f02260c06164801463f28fc636af82743763ded9dc5085bd58fd3b417b93b"
+      sha256 "432e5f56c44af6dc557a3154e1e4122ec8126e159ae674bb2c4a4bd31f58a853"
     end
   end
 
