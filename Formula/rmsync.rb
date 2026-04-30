@@ -18,24 +18,35 @@
 class Rmsync < Formula
   desc "Bidirectional macOS ↔ reMarkable tablet Markdown sync daemon"
   homepage "https://github.com/madhavsuresh/rmsync"
-  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.23.tar.gz"
-  sha256 "29bc9344c36f66a346023466e7d48cc62cf41dc796129945ffcb8cefd87ed111"
-
+  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.24.tar.gz"
+  sha256 "a4f6cba8f9e5d9bda29e062dea7ac6b3248c68e95d7bd57927b29cad3b542464"
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
-  # Brew audit expects a specific dep order: build-time deps first,
-  # then runtime formula deps, then OS constraints.
+  # Brew audit's strict mode enforces this dep ordering:
+  #   1. build-time deps (`:build`)
+  #   2. system / OS constraints (``depends_on macos:``, arch)
+  #   3. runtime formula deps (cross-formula references)
+  # Earlier versions of this formula had macos last, which v0.2.24
+  # caught when the rmapi dep moved to a tap-prefixed name and the
+  # audit re-ran with stricter rules.
 
   # Swift 6+ lives in Xcode 16. Command-line tools work too but brew
   # can't enforce that distinction.
   depends_on xcode: ["16.0", :build]
 
-  # rmapi is required at runtime; we shell out to it for all cloud access.
-  # io41/tap maintains a recent formula for the Go binary.
-  depends_on "io41/tap/rmapi"
-
   depends_on macos: :ventura
+
+  # rmapi is required at runtime; we shell out to it for all cloud
+  # access. We pin a specific version via this same tap (rather than
+  # io41/tap/rmapi, which sat at 0.0.29 through the 2026-04 cloud
+  # schema-v4 break that 400'd every put — see ddvk/rmapi#58 +
+  # rmsync v0.2.23 release notes). Pulling from a tap we control
+  # eliminates the upstream-coordination delay when the cloud-side
+  # API moves; the auto-bump workflow in the tap repo
+  # (`.github/workflows/rmapi-bump.yml`) opens a PR within 24h of a
+  # new ddvk/rmapi release.
+  depends_on "madhavsuresh/rmsync/rmapi"
 
   def install
     cd "swift" do
