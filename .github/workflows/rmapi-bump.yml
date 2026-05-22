@@ -118,28 +118,43 @@ jobs:
           branch="bump-rmapi-v${NEW_VERSION}"
           git config user.name "rmapi-bumper"
           git config user.email "noreply@github.com"
-          # If the PR already exists from a prior run, no-op
-          # rather than producing duplicate noise.
-          if gh pr list --head "$branch" --json number --jq '.[0].number' | grep -q .; then
-            echo "PR for $branch already open; skipping."
-            exit 0
+
+          # Reuse an already-open PR for this branch if there is one.
+          PR_URL=$(gh pr list --head "$branch" --state open --json url --jq '.[0].url')
+          if [ -z "$PR_URL" ]; then
+            # No open PR — (re)create the branch from fresh main. A prior
+            # run can leave a stale bump-rmapi-vX on the remote: the old
+            # ``gh pr merge --auto --delete-branch`` never fires on this
+            # tap (main has no branch-protection + auto-merge, so --auto
+            # exits 1 — the same lesson release.yml learned at v0.2.37),
+            # so the branch is never deleted. The next run's
+            # ``checkout -b`` + plain push then fails non-fast-forward
+            # ("fetch first"). Fetch all heads so --force-with-lease has
+            # an accurate remote-tracking ref to compare against; ``-B``
+            # resets the branch to fresh main; --force-with-lease
+            # overwrites the stale branch but refuses on a concurrent push.
+            git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+            git checkout -B "$branch" origin/main
+            git add Formula/rmapi.rb
+            git commit -m "rmapi v${NEW_VERSION}"
+            git push -u origin "$branch" --force-with-lease
+            # Body is a single-line string. YAML's ``run: |`` literal
+            # block ends on any column-1 content; a multi-line body broke
+            # the workflow at parse time (release.yml hit the same trap).
+            BODY="Automated bump from rmapi v${OLD_VERSION} -> v${NEW_VERSION}. Upstream notes: https://github.com/ddvk/rmapi/releases/tag/v${NEW_VERSION} . Sha256s recomputed for all four prebuilt archives by this workflow. Merges once the Formula audit (CI) passes."
+            PR_URL=$(gh pr create \
+              --title "rmapi v${NEW_VERSION}" \
+              --body "$BODY" \
+              | tail -1)
+            echo "Opened PR: $PR_URL"
+          else
+            echo "Reusing open PR: $PR_URL"
           fi
-          git checkout -b "$branch"
-          git add Formula/rmapi.rb
-          git commit -m "rmapi v${NEW_VERSION}"
-          git push --set-upstream origin "$branch"
-          # Body is a single-line string. YAML's ``run: |`` literal
-          # block ends on any column-1 content; the previous
-          # multi-line body broke the workflow at parse time
-          # (release.yml hit the same trap; see commit history).
-          BODY="Automated bump from rmapi v${OLD_VERSION} -> v${NEW_VERSION}. Upstream notes: https://github.com/ddvk/rmapi/releases/tag/v${NEW_VERSION} . Sha256s recomputed for all four prebuilt archives by this workflow. Auto-merges once Formula audit (CI) passes."
-          PR_URL=$(gh pr create \
-            --title "rmapi v${NEW_VERSION}" \
-            --body "$BODY" \
-            | tail -1)
-          echo "Opened PR: $PR_URL"
-          # Queue auto-merge. ``--auto`` waits for the tap CI's
-          # Formula audit to pass before merging — we never want a
-          # red bump landing silently. Squash to keep the bump
-          # commit's subject as the changelog entry on tap main.
-          gh pr merge "$PR_URL" --squash --auto --delete-branch
+
+          # Wait for the Formula audit to finish, then squash-merge.
+          # Replaces ``gh pr merge --auto``, which exits 1 on this tap
+          # (no branch-protection + auto-merge) and turned every run red
+          # while leaving the branch undeleted (release.yml v0.2.37).
+          # --delete-branch here makes the workflow self-healing.
+          gh pr checks "$PR_URL" --watch
+          gh pr merge "$PR_URL" --squash --delete-branch
