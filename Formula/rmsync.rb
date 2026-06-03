@@ -18,8 +18,8 @@
 class Rmsync < Formula
   desc "Explicit macOS to reMarkable tablet Markdown sync"
   homepage "https://github.com/madhavsuresh/rmsync"
-  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.41.tar.gz"
-  sha256 "44575395541ea307574f6565500131a1bbe8f774248d58384f2079363f7a6b7a"
+  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.42.tar.gz"
+  sha256 "438843e7c98425915a2e786b196223d5575839ed9898cbbdb66592ebfd7ed223"
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
@@ -159,7 +159,7 @@ class Rmsync < Formula
       menu bar, dashboard, and IPC online, but it does not poll the
       cloud or watch local files for background mutation. Sync with:
           rmsync pull
-          rmsync diff
+          rmsync diff [path]
           rmsync accept <path>  # or: rmsync accept --all
           rmsync push [path ...]
 
