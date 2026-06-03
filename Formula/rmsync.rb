@@ -18,8 +18,8 @@
 class Rmsync < Formula
   desc "Explicit macOS to reMarkable tablet Markdown sync"
   homepage "https://github.com/madhavsuresh/rmsync"
-  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.45.tar.gz"
-  sha256 "6f0628f6f4d2af7bb3359111095d25d29a4b58edda8f984902cf3a0a3f57bed9"
+  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.3.00.tar.gz"
+  sha256 "db8a252c0e6a59a81bc0af500feb24d09178ed0e1801d0a873e7c988da7331ea"
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
@@ -147,7 +147,7 @@ class Rmsync < Formula
       (Your reMarkable cloud auth at ~/.config/rmapi survives this.)
 
       rmsync ships a sync daemon and a separate menu bar app. Neither
-      is started by `brew install` — you finish setup in three steps:
+      is started by `brew install`; finish setup with:
 
         1. Authenticate rmapi (one-time per Mac):
              rmapi
@@ -157,19 +157,31 @@ class Rmsync < Formula
         2. Install and boot both launchd agents:
              rmsync-install-agents
 
-        3. Verify:
+        3. Initialize the configured sync folder:
+             rmsync init
+
+        4. Verify and inspect the live interface:
              rmsync doctor
              rmsync status
 
       Current releases use explicit sync. The daemon keeps status,
-      menu bar, dashboard, and IPC online, but it does not poll the
-      cloud or watch local files for background mutation. Sync with:
+      menu bar, dashboard, IPC, and a read-only pull availability
+      probe online, but it does not pull, reconcile, or delete in the
+      background. Sync with:
           rmsync pull
           rmsync diff [path]
           rmsync accept <path>  # or: rmsync accept --all
           rmsync push [path ...]
+      Optional safe auto-push can watch local Markdown edits only if
+      you enable it in config; it never pulls or propagates deletes.
 
-      The default sync dir is ~/rmsync-writing. Move it anywhere
+      Interface map:
+          sync folder       edit local Markdown (default: ~/rmsync-notes)
+          menu bar          status, pull availability, conflicts, pause/resume
+          CLI               all sync mutations and diagnostics
+          web dashboard     optional browser status and pause/resume
+
+      The default sync dir is ~/rmsync-notes. Move it anywhere
       (iCloud, Dropbox, a git repo) with:
           rmsync relocate ~/path/to/new/dir
 
@@ -225,7 +237,7 @@ class Rmsync < Formula
                "$HOME/Library/Logs/rmsync" \\
                "$HOME/Library/Application Support/rmsync" \\
                "$HOME/.config/rmsync" \\
-               "$HOME/rmsync-writing"
+               "$HOME/rmsync-notes"
 
       # Seed a default config if missing. Mirrors install.sh's block so
       # source-install and brew-install converge on the same defaults.
@@ -235,39 +247,13 @@ class Rmsync < Formula
       # rmsync configuration. Restart the daemon after edits:
       #   rmsync restart
 
-      sync_dir      = "$HOME/rmsync-writing"
-      remote_folder = "Writing"
-
-      worker_pool_size               = 3
-
-      # Legacy daemon tuning retained for config compatibility.
-      # Current explicit-sync releases do not start a watcher, poller,
-      # reconcile pass, or background worker pool.
-      poll_interval_seconds          = 30
-      poll_active_interval_seconds   = 15
-      poll_idle_interval_seconds     = 120
-      debounce_seconds               = 2.0
-      echo_fence_seconds             = 5.0
-      retry_max_attempts             = 3
-
-      # native_plain: plain text only (recommended)
-      # native_formatted: experimental, not fully implemented
-      # pdf: read-only on tablet, not fully implemented
-      push_strategy = "native_plain"
+      sync_dir      = "$HOME/rmsync-notes"
+      remote_folder = "sync/notes"
 
       backup_snapshots_to_keep = 30
-      dry_run                  = false
 
       [log]
       level = "INFO"   # DEBUG | INFO | WARNING | ERROR
-
-      # Legacy optional drop-folder for sending PDFs / EPUBs to the tablet.
-      # The explicit-sync daemon does not watch this folder. Use rmapi directly
-      # for PDF / EPUB sends until rmsync has a dedicated explicit send command.
-      # [inbox]
-      # local_dir         = "$HOME/rmsync-writing/_inbox"
-      # remote_folder     = "Inbox"
-      # delete_after_push = true
 
       # Optional: web dashboard at http://127.0.0.1:7878.
       # [web]
@@ -275,21 +261,10 @@ class Rmsync < Formula
       # bind_addr  = "127.0.0.1"
       # port       = 7878
 
-      # Legacy rename / move / delete propagation settings. Current
-      # explicit-sync releases do not propagate deletes automatically.
-      # Local deletes affect the cloud only with:
-      #   rmsync push --include-deletes
-      # Cloud deletes affect local files only after:
-      #   rmsync pull
-      #   rmsync accept --include-deletes <path>
-      # Accepted local deletes are parked in <sync_dir>/.rmsync-trash first.
-      # [deletion]
-      # enable_propagation         = true
-      # trash_retention_days       = 30
-      # bulk_delete_threshold      = 0.5
-      # bulk_delete_window_seconds = 30
+      [deletion]
+      trash_retention_days = 30
       TOML
-        echo "  Edit it if you want sync_dir somewhere other than ~/rmsync-writing"
+        echo "  Edit it if you want sync_dir somewhere other than ~/rmsync-notes"
         echo "  (or run 'rmsync relocate <new-path>' after the daemon comes up)."
       fi
 
@@ -325,7 +300,7 @@ class Rmsync < Formula
       boot com.user.rmsync.menubar
 
       echo "rmsync agents installed and started."
-      echo "Next: rmsync doctor"
+      echo "Next: rmsync init && rmsync doctor && rmsync status"
     SH
   end
 
