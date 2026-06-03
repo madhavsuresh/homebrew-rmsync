@@ -18,8 +18,8 @@
 class Rmsync < Formula
   desc "Explicit macOS to reMarkable tablet Markdown sync"
   homepage "https://github.com/madhavsuresh/rmsync"
-  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.44.tar.gz"
-  sha256 "de48c0d6a6e7abf49ca42992f24f0e27fc83a4e66ea30cd15519ae10df9075ee"
+  url "https://github.com/madhavsuresh/rmsync/archive/refs/tags/v0.2.45.tar.gz"
+  sha256 "6f0628f6f4d2af7bb3359111095d25d29a4b58edda8f984902cf3a0a3f57bed9"
   license "MIT"
   head "https://github.com/madhavsuresh/rmsync.git", branch: "main"
 
